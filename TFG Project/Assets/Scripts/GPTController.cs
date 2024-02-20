@@ -1,8 +1,7 @@
-// Quizá no sea necesaria
 // Clase para la comunicación con ChatGPT tanto de entrada como de salida
 // Creamos una instancia de ChatGPT para comunicarnos
 // Cada acción del usuario o evento del juego provoca una llamada a ChatGPT
-// La llamada se hace pasándole la acción ya traducida, por lo que habrá que 
+// La llamada se hace pasándole la acción ya traducida
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
@@ -13,8 +12,6 @@ namespace OpenAI
 {
     public class GPTController : MonoBehaviour
     {
-        //[SerializeField] private TMP_InputField inputField;
-        //[SerializeField] private Button button;
         [SerializeField] private TMP_Text textito;
 
         [SerializeField] private RectTransform sent;
@@ -23,9 +20,6 @@ namespace OpenAI
         private TraductionLogic traductionRes;
 
         private static GPTController _instance;
-        //private OnClickGround onClickGround;
-        //private OnClickGravity onClickGravity;
-        //private TraductionLogic traductionLogic;
 
         private float height;
         private OpenAIApi openai = new();
@@ -45,8 +39,6 @@ namespace OpenAI
 
         private void Awake()
         {
-            //onClickGround = GameObject.FindObjectOfType<OnClickGround>();
-            //onClickGravity = GameObject.FindObjectOfType<OnClickGravity>();
             traductionRes = GameObject.FindObjectOfType<TraductionLogic>();
 
             if (traductionRes == null)
@@ -55,67 +47,10 @@ namespace OpenAI
             }
         }
 
-        //private void Start()
-        //{
-        //    button.onClick.AddListener(SendReply2);
-        //}
-
         private void AppendMessage(string message)
         {
             textito.SetText(message);
         }
-
-        //private async void SendReply2()
-        //{
-        //    Debug.Log("SENDREPLY2");
-        //    var newMessage = new ChatMessage()
-        //    {
-        //        Role = "user",
-        //        Content = inputField.text
-        //    };
-
-        //    //AppendMessage(newMessage);
-        //    // Evita procesar un mensaje vacío si se pulsa enviar si ningún texto
-        //    if (!string.IsNullOrEmpty(newMessage.Content.Trim()))
-        //    {
-        //        if (messages.Count == 0) newMessage.Content = prompt + "\n" + inputField.text;
-
-        //        messages.Add(newMessage);
-
-        //        button.enabled = false;
-        //        inputField.text = "";
-        //        inputField.enabled = false;
-
-        //        // Complete the instruction
-        //        var completionResponse = await openai.CreateChatCompletion(new CreateChatCompletionRequest()
-        //        {
-        //            Model = "gpt-3.5-turbo-1106",
-        //            Messages = messages
-        //        });
-
-        //        if (completionResponse.Choices != null && completionResponse.Choices.Count > 0)
-        //        {
-        //            var message = completionResponse.Choices[0].Message;
-        //            message.Content = message.Content.Trim();
-
-
-        //            // tradutionRes.Traduce(message); // Llama a traduce para traducir el mensaje a una acción.
-        //            traductionRes.getAction(message.Content, out actionText, out naeveText);
-        //            messages.Add(message);
-        //            AppendMessage(naeveText);
-        //        }
-        //        else
-        //        {
-        //            Debug.LogWarning("No text was generated from this prompt.");
-        //        }
-
-        //        button.enabled = true;
-        //        inputField.enabled = true;
-        //    }
-
-            
-        //}
-
 
         public static GPTController Instance
         {
@@ -152,7 +87,7 @@ namespace OpenAI
         {
             if (newMsgSend)
             {
-                // puedo guardar un contador en la clase y empezar el bucle desde ahí para no escribir todos los mensajes todo cada vez
+                // Puedo guardar un contador en la clase y empezar el bucle desde ahí para no escribir todos los mensajes todo cada vez
                 for (int i = 0; i < messages.Count; i++)
                 {
                     Debug.Log("Mensaje " + i + ": " + messages[i].Content);
@@ -161,6 +96,7 @@ namespace OpenAI
             }
         }
 
+        // Obtiene la respuesta ya parseada, que corresponde con las acciones a realizar
         public string GetAnswer()
         {
             return actionText;
@@ -168,19 +104,8 @@ namespace OpenAI
 
         public void answerReady(string response/*, string click*/)
         {
-            // Supongamos que la respuesta está lista y guardada en una variable llamada response
-            // Llama al método SetReply de MyScript
+            // Guardamos la respuesta en ResponseTraduction para parsearla posteriormente
             traductionRes.SetReply(response);
-            //if (click == "ground")
-            //{
-            //    onClickGround.SetReply(response);
-
-            //}
-            //else if(click == "gravity")
-            //{
-            //    onClickGravity.SetReply(response);
-
-            //}
         }
 
 
@@ -198,7 +123,6 @@ namespace OpenAI
 
             messages.Add(newMessage);
 
-            // Complete the instruction
             var completionResponse = await openai.CreateChatCompletion(new CreateChatCompletionRequest()
             {
                 Model = "gpt-3.5-turbo-1106",
@@ -211,8 +135,7 @@ namespace OpenAI
                 var message = completionResponse.Choices[0].Message;
                 message.Content = message.Content.Trim();
 
-                /*tradutionRes.Traduce(message, mousePosition);*/ // Llama a traduce para traducir el mensaje a una acción.
-                // guardamos la respuesta en answer para poder devolverla
+                // Parseamos el mensaje y obtenemos por un lado la acción y por el otro el texto en lenguaje natural
                 traductionRes.getAction(message.Content, out actionText, out naeveText);
                 //Debug.Log("action text:" + actionText);
                 messages.Add(message);

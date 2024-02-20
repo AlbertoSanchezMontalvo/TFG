@@ -9,10 +9,10 @@ public class CambioEscena : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        // Verificar si el personaje ha cruzado el límite
+        // Verifica si el personaje ha cruzado el límite (extremo derecho de la pantalla)
         if (other.CompareTag("player"))
         {
-            // Cambiar a la siguiente escena
+            // Cambia a la siguiente escena
             SceneManager.LoadScene(nombre);
         }
     }

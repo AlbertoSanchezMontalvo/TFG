@@ -14,7 +14,7 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
-        // Verifica si el jugador ha cruzado la coordenada de activación
+        // Verifica si el jugador ha cruzado la coordenada de activación para aparecer en la escena
         if (gameObject.activeSelf)
         {
             Mover(gameObject);
@@ -23,7 +23,9 @@ public class EnemyController : MonoBehaviour
     }
     void Mover(GameObject obj)
     {
-        Vector2 target = new Vector2(60, 0); // Creamos el vector 2D con las posiciones del objetivo al que va el enemigo (la mesa)
+        // VINCULAR LA POSICIÓN CON LA MESA
+        // Creamos el vector 2D con las posiciones del objetivo al que va el enemigo (la mesa)
+        Vector2 target = new Vector2(60, 0); 
         MoveTowardsTarget(obj, target);
     }
 
