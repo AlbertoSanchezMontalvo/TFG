@@ -23,11 +23,11 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - suelo
   - Water
   - UI
   - Backray
-  - 
+  - lluvia
   - 
   - 
   - Background
@@ -55,6 +55,12 @@ TagManager:
   m_SortingLayers:
   - name: BackGround
     uniqueID: 2032243057
+    locked: 0
+  - name: lluvia
+    uniqueID: 2194929479
+    locked: 0
+  - name: suelo
+    uniqueID: 422766081
     locked: 0
   - name: Default
     uniqueID: 0
