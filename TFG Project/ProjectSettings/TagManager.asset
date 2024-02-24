@@ -19,6 +19,7 @@ TagManager:
   - silla
   - "sof\xE1"
   - aliado
+  - cofre
   layers:
   - Default
   - TransparentFX

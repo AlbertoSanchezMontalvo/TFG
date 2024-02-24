@@ -58,10 +58,12 @@ namespace DigitalRuby.LightningBolt
         [Tooltip("How manu generations? Higher numbers create more line segments.")]
         public int Generations = 6;
 
-        [Range(0.01f, 1.0f)]
+        [Range(0.01f, 5.0f)]
         [Tooltip("How long each bolt should last before creating a new bolt. In ManualMode, the bolt will simply disappear after this amount of seconds.")]
-        public float Duration = 0.5f;
-        private float timer;
+        public float Duration = 2.0f;
+
+        [Range(0.01f, 10.0f)]
+        public float timer = 2.0f;
 
         [Range(0.0f, 1.0f)]
         [Tooltip("How chaotic should the lightning be? (0-1)")]
@@ -80,6 +82,8 @@ namespace DigitalRuby.LightningBolt
 
         [Tooltip("The animation mode for the lightning")]
         public LightningBoltAnimationMode AnimationMode = LightningBoltAnimationMode.PingPong;
+
+        private int activeThunder = 0;
 
         /// <summary>
         /// Assign your own random if you want to have the same lightning appearance
@@ -295,19 +299,37 @@ namespace DigitalRuby.LightningBolt
         private void Update()
         {
             orthographic = (Camera.main != null && Camera.main.orthographic);
-            if (timer <= 0.0f)
+            if (timer > 0.0f)
+            {
+                timer -= Time.deltaTime;
+            }
+            else 
             {
                 if (ManualMode)
                 {
-                    timer = Duration;
-                    lineRenderer.positionCount = 0;
+                    lineRenderer.positionCount = 0;       
                 }
                 else
                 {
                     Trigger();
+                    timer = 0.2f;
+                    activeThunder += 1;
+                }
+
+            }
+
+            if (activeThunder >= Generations)
+            {
+                Duration -= Time.deltaTime;
+                if (Duration <= 0)
+                {
+                    lineRenderer.positionCount = 0;
+                    activeThunder = 0;
+                    Duration = 0.5f;
+                    timer = Random.Range(3.0f, 10.0f);
                 }
             }
-            timer -= Time.deltaTime;
+            
         }
 
         /// <summary>
