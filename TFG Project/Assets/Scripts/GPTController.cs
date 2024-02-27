@@ -90,7 +90,7 @@ namespace OpenAI
                 // Puedo guardar un contador en la clase y empezar el bucle desde ahí para no escribir todos los mensajes todo cada vez
                 for (int i = 0; i < messages.Count; i++)
                 {
-                    Debug.Log("Mensaje " + i + ": " + messages[i].Content);
+                    //Debug.Log("Mensaje " + i + ": " + messages[i].Content);
                 }
                 newMsgSend = false;
             }

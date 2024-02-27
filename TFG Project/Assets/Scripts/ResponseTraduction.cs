@@ -29,7 +29,11 @@ public class TraductionLogic : MonoBehaviour
     public GameObject silla;
     public GameObject vela;
 
+    public GameObject teleportVFX;
+
     private OnClick onClick = new();
+
+    private Animator naeveAnimator;
 
     // Tags del collider de cada gameobject de la escena
     //private const string comicTag = "cómic";
@@ -56,15 +60,18 @@ public class TraductionLogic : MonoBehaviour
     private GameObject objectMoving = null;
     private GameObject objectInvisible = null;
 
+    private int groundLayerMask;
+
     private const float speed = 10f;
-    private float jumpForce = 25f;
+    private float jumpForce = 700f;
+    private bool isJumping = false;
     private const float interactionRange = 12f; // Rango de interacción con los objetos
 
     // Abecedario del lenguaje formal, dividido en acciones, objetos y entidades
     private string[] actions = { "coger", "mover", "transformar", "vibrar", "desaparecer", "menguar", "crecer", "explotar", "atacar", "esconderse", "atraer", "teletransportar", "soltar", "levitar", "aparecer", "utilizar", "saltar", "hablar", "esperar", "caer", "invisibilizar" };
     private string[] objects = { "paraguas", "cómic", "tronco", "sofá", "mesa", "vela", "silla" };
     private string[] entities = { "Naeve", "enemigo", "aliado" };
-    private string[] objectsNoScene = {"llave", "puerta", "linterna" };
+    private string[] objectsNoScene = { "llave", "puerta", "linterna" };
     //private GameObject[] gameObjectList = { player, comic, paraguas };
     private List<string> inventory = new();
     // Diccionario con la correspondencia string-gameobject para cada objeto y ente
@@ -79,24 +86,19 @@ public class TraductionLogic : MonoBehaviour
 
     private void Start()
     {
-        //float hla;
-        //float.TryParse("89.45", NumberStyles.Float, CultureInfo.InvariantCulture, out hla);
-        //Debug.Log("parseado: " + hla);
         InitializeActionObjectLogic();
         InitializeGameObjectDictionary();
-        // Ejemplo de cómo utilizar la lógica para una combinación específica con un objeto del juego
-        //GameObject caja = GameObject.Find("caja");
-        //GameObject paraguas = GameObject.Find("paraguas")
-        //ExecuteActionObjectLogic("mover", comic);
-        //ExecuteActionObjectLogic("coger", paraguas);
-        //GPTController.Instance.InitGPT();
+        // Obtenemos el componente animator
+        naeveAnimator = player.GetComponent<Animator>();
+        // Obtenemos la capa del suelo para poder saber cuando está encima Naeve y cuando no
+        groundLayerMask = LayerMask.GetMask("suelo");
     }
 
     private void Update()
     {
         if (enemy.activeSelf && !enemyAwake) // Comprueba si el enemigo ha aparecido ya para generar el prompt correspondiente.
         {
-            enemyAwake = true;        
+            enemyAwake = true;
             buildEnemyPrompt(); // Llamamos a un función auxiliar para generar el mensaje y enviárselo a GPT.
 
         }
@@ -106,7 +108,7 @@ public class TraductionLogic : MonoBehaviour
 
             if (hit.collider != null/* && hit.collider.CompareTag(tag)*/)
             {
-                string tag = hit.collider.tag;      
+                string tag = hit.collider.tag;
                 buildInteractionMsg(hit); // Llamamos a un función auxiliar para generar el mensaje y enviárselo a GPT.
 
             }
@@ -117,7 +119,7 @@ public class TraductionLogic : MonoBehaviour
                 StartCoroutine(SendAndHandleReply("Click en el escenario en la posición: " + hit.point));
             }
         }
-     
+
         if (moving && !objectMoving.Equals(null))
         {
             MoveTowardsTarget(objectMoving);
@@ -126,6 +128,22 @@ public class TraductionLogic : MonoBehaviour
         if (invisible && !objectInvisible.Equals(null))
         {
             InvisibleTarget(objectInvisible);
+        }
+
+        if (isJumping)
+        {
+            // Introduzco un pequeño retraso para que le de tiempo a comenzar a saltar antes de comprobar si Naeve no está en el suelo. Ya que, de otro modo, se desactiva inmediatamente la animación
+            Invoke("CheckGroundedAfterJump", 0.1f);
+        }
+    }
+
+    // Función para checkear si Naeve ha tocado ya el suelo y podemos quitar la animación de saltar
+    private void CheckGroundedAfterJump()
+    {
+        if (IsGrounded())
+        {
+            naeveAnimator.SetBool("isJump", false);
+            isJumping = false;
         }
     }
 
@@ -172,6 +190,10 @@ public class TraductionLogic : MonoBehaviour
         {
             moving = false;
             objectMoving = null;
+            if (obj == player)
+            {
+                naeveAnimator.SetBool("isRun", false);
+            }
         }
     }
 
@@ -192,7 +214,7 @@ public class TraductionLogic : MonoBehaviour
         newColor.a = newTransparency;
         objectRenderer.material.color = newColor;
 
-        if (newTransparency <= invisibleValue) 
+        if (newTransparency <= invisibleValue)
         {
             invisible = false;
             objectInvisible = null;
@@ -200,8 +222,10 @@ public class TraductionLogic : MonoBehaviour
     }
     private void Jump(Rigidbody2D rb)
     {
-        if (IsGrounded()) // Asegura que el jugador esté en el suelo antes de saltar
+        if (IsGrounded() & !naeveAnimator.GetBool("isJump")) // Asegura que el jugador esté en el suelo antes de saltar y que no está la animación ya activada
         {
+            isJumping = true;
+            naeveAnimator.SetBool("isJump", true);
             rb.velocity = new Vector2(rb.velocity.x, 0f); // Reinicia la velocidad en el eje Y
             rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
         }
@@ -210,10 +234,9 @@ public class TraductionLogic : MonoBehaviour
     private bool IsGrounded()
     {
         // Implementa la lógica para verificar si el jugador está en el suelo
-        // Puedes usar raycasts u otros métodos según tus necesidades
-        // Ejemplo simple usando un raycast hacia abajo:
         float raycastDistance = 0.1f;
-        RaycastHit2D hit = Physics2D.Raycast(player.transform.position, Vector2.down, raycastDistance);
+        RaycastHit2D hit = Physics2D.Raycast(player.transform.position, Vector2.down, raycastDistance, groundLayerMask);
+
         return hit.collider != null;
     }
 
@@ -225,7 +248,6 @@ public class TraductionLogic : MonoBehaviour
         {
             yield return null;
         }
-        // Aquí puedes usar la respuesta obtenida
         //Debug.Log("get answer 2: " + reply);
         InterpretString(reply); // Llama a traduce para traducir el mensaje a una acción.
         GPTController.Instance.UpdateGPT();
@@ -258,7 +280,7 @@ public class TraductionLogic : MonoBehaviour
         // Asignación de lógica a combinaciones específicas con métodos que aceptan GameObject como argumento
         actionObjectLogic.Add("mover", Mover); // HECHO
         actionObjectLogic.Add("coger", Coger); // HECHO
-        actionObjectLogic.Add("transformar", Transformar); 
+        actionObjectLogic.Add("transformar", Transformar);
         actionObjectLogic.Add("vibrar", Vibrar);
         actionObjectLogic.Add("desaparecer", Desaparecer); // HECHO
         actionObjectLogic.Add("menguar", Menguar); // HECHO
@@ -294,12 +316,12 @@ public class TraductionLogic : MonoBehaviour
 
     private void Invisibilizar(GameObject obj)
     {
-        if(!invisible)
+        if (!invisible)
         {
             invisible = true;
             objectInvisible = obj;
             InvisibleTarget(obj);
-        }      
+        }
     }
 
     // Si el objeto tiene rigidbody que está desactivado, lo activa. De esta forma el objeto caerá
@@ -373,7 +395,7 @@ public class TraductionLogic : MonoBehaviour
         {
             Debug.Log("El objeto que quieres soltar no está en el inventario");
         }
-        
+
     }
 
     // Teletransporta a Naeve al objeto obj
@@ -381,8 +403,14 @@ public class TraductionLogic : MonoBehaviour
     {
         Debug.Log("Lógica para teletransportar el objeto: " + obj.name);
         // Hacemos que el objeto dado se mueva a la posición posx, posy, dada por chatGPT y guardada en la función anterior
+        // Si la altura es menor que el suelo, teletransportamos al suelo.
+        //posY = (posY < 2.2525f) ? 2.2525f : posY;
+        if (posY < 2.2525f) posY = 2.2525f;
         target = new Vector2(posX, posY); // Creamos el vector 2D con las posiciones del objeto
+        // Añado Vextor3.up * 5.0f para que el efecto sea en el cuerpo de Naeve y no en los pies
+        Instantiate(teleportVFX, obj.transform.position + Vector3.up * 4.0f, Quaternion.identity);
         TeleportTowardsTarget(obj);
+        Instantiate(teleportVFX, target, Quaternion.identity);
     }
 
     private void Atraer(GameObject obj)
@@ -448,11 +476,25 @@ public class TraductionLogic : MonoBehaviour
         posX = 0; posY = 0; // * Reseteo posiciones para depuración
         moving = true;
         objectMoving = obj;
-        if (obj == player) // Si el objeto dado es el jugador sólo se puede mover en el eje x
+        if (obj == player && IsGrounded()) // Si el objeto dado es el jugador sólo se puede mover en el eje x, además activamos la animación de correr
         {
             target.y = player.transform.position.y;
+            // Si el target está a la izquierda, Naeve correría hacia la izquierda. Si no, hacia la derecha. Utilizo la posición x del vector en negativo o positivo para hacer esto
+            // Además, como la escala de Naeve es de 2.2, además del - o + en la dirección, mantenemos la escala de 2.2
+            float direction;
+            if (target.x < player.transform.position.x)
+            {
+                direction = -2.2f;
+                player.transform.localScale = new Vector3(direction, 2.2f, 1);
+            }
+            else
+            {
+                direction = 2.2f;
+                player.transform.localScale = new Vector3(direction, 2.2f, 1);
+            }
+            naeveAnimator.SetBool("isRun", true);
         }
-        MoveTowardsTarget(obj);
+        if (IsGrounded()) MoveTowardsTarget(obj);
     }
 
     void Coger(GameObject obj)
@@ -558,7 +600,7 @@ public class TraductionLogic : MonoBehaviour
             if (parts.Length == 4)
             {
                 subParts = parts[3].Split(',');
-            }     
+            }
             else
             {
                 subParts = parts[2].Split(',');
@@ -591,7 +633,7 @@ public class TraductionLogic : MonoBehaviour
                     Debug.Log("Posición X: " + posX);
                     Debug.Log("Posición Y: " + posY);
                     // Confirmamos que la accion sea mover
-                    if (action == actions[1]) 
+                    if (action == actions[1])
                     {
                         // En este caso, tenemos sólo una orden de mover y la posición, por lo que hay que mover a Naeve(player)
                         ExecuteActionObjectLogic(action, player);

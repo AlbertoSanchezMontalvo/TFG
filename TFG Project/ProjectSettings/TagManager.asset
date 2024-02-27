@@ -20,6 +20,7 @@ TagManager:
   - "sof\xE1"
   - aliado
   - cofre
+  - porton
   layers:
   - Default
   - TransparentFX
