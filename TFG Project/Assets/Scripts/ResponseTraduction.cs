@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.ConstrainedExecution;
 using System.Text;
+using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using static UnityEngine.GraphicsBuffer;
@@ -47,6 +48,9 @@ public class TraductionLogic : MonoBehaviour
     //private const string sillaTag = "silla";
     //private const string aliadoTag = "aliado";
 
+    private string actionText;
+    private string naeveText;
+
     private string reply = "";
     private Vector2 target;
     private float posX, posY;
@@ -68,7 +72,7 @@ public class TraductionLogic : MonoBehaviour
     private const float interactionRange = 12f; // Rango de interacción con los objetos
 
     // Abecedario del lenguaje formal, dividido en acciones, objetos y entidades
-    private string[] actions = { "coger", "mover", "transformar", "vibrar", "desaparecer", "menguar", "crecer", "explotar", "atacar", "esconderse", "atraer", "teletransportar", "soltar", "levitar", "aparecer", "utilizar", "saltar", "hablar", "esperar", "caer", "invisibilizar" };
+    private string[] actions = { "coger", "mover", "transformar", "vibrar", "desaparecer", "menguar", "crecer", "explotar", "atacar", "esconderse", "atraer", "teletransportar", "soltar", "levitar", "materializar", "utilizar", "saltar", "hablar", "esperar", "caer", "invisibilizar" };
     private string[] objects = { "paraguas", "cómic", "tronco", "sofá", "mesa", "vela", "silla" };
     private string[] entities = { "Naeve", "enemigo", "aliado" };
     private string[] objectsNoScene = { "llave", "puerta", "linterna" };
@@ -110,13 +114,13 @@ public class TraductionLogic : MonoBehaviour
             {
                 string tag = hit.collider.tag;
                 buildInteractionMsg(hit); // Llamamos a un función auxiliar para generar el mensaje y enviárselo a GPT.
-
             }
             else // No ha detectado ningún collider, click en el escenario
             {
                 // Podría poner un collider is trigger en el escenario y detecatarlo como el resto de cosas.
                 Debug.Log("Click en el escenario en la posición: " + hit.point);
-                StartCoroutine(SendAndHandleReply("Click en el escenario en la posición: " + hit.point));
+                //StartCoroutine(SendAndHandleReply("Click en el escenario en la posición: " + hit.point));
+                buildOtherMsg("Click en el escenario en la posición: " + hit.point);
             }
         }
 
@@ -148,9 +152,9 @@ public class TraductionLogic : MonoBehaviour
     }
 
     // Construye el prompt cuando aparece el hombre del sombrero
-    private void buildEnemyPrompt()
+    private async void buildEnemyPrompt()
     {
-        string msg = "El enemigo (hombre del sombrero) ha aparecido en la escena y va hacia ti. Parece amenazador. Naeve tiene mucho miedo. Recuerda tus posibles acciones: Acción: {coger, mover, transformar, vibrar, desaparecer, menguar, crecer, explotar, atacar, esconderse, atraer, teletransportar, soltar, levitar, aparecer, utilizar, saltar, hablar, esperar, caer, invisibilizar} y sólo puedes utilizar tus objetos en el inventario, que son: ";
+        string msg = "El enemigo (hombre del sombrero) ha aparecido en la escena y va hacia ti. Parece amenazador. Naeve tiene mucho miedo. Recuerda tus posibles acciones: Acción: {coger, mover, transformar, vibrar, desaparecer, menguar, crecer, explotar, atacar, esconderse, atraer, teletransportar, soltar, levitar, materializar, utilizar, saltar, hablar, esperar, caer, invisibilizar} y sólo puedes utilizar tus objetos en el inventario, que son: ";
 
         if (inventory.Count == 0)
         {
@@ -164,20 +168,20 @@ public class TraductionLogic : MonoBehaviour
             }
         }
         Debug.Log(msg);
-        StartCoroutine(SendAndHandleReply(msg));
+        await SendAndHandleReply(msg);
     }
 
     // Creamos el mensaje cuando hace click el jugador, y la corutina para enviarlo a GPT
-    private void buildInteractionMsg(RaycastHit2D hit)
+    private async void buildInteractionMsg(RaycastHit2D hit)
     {
         string sendMsg = "El jugador ha hecho click en " + hit.collider.gameObject.name + ", en la posición: " + hit.point;
-        StartCoroutine(SendAndHandleReply(sendMsg));
+        await SendAndHandleReply(sendMsg);
     }
 
     //Creamos un mensaje cualquiera pasado por parámetro
-    private void buildOtherMsg(string msg)
+    private async void buildOtherMsg(string msg)
     {
-        StartCoroutine(SendAndHandleReply(msg));
+        await SendAndHandleReply(msg);
     }
 
     // Función para mover a Naeve a un objetivo determinado
@@ -240,16 +244,22 @@ public class TraductionLogic : MonoBehaviour
         return hit.collider != null;
     }
 
-    private IEnumerator SendAndHandleReply(string msgSend)
+    private async Task SendAndHandleReply(string msgSend)
     {
-        GPTController.Instance.SendReply(msgSend);
+        reply = await GPTController.Instance.SendReply(msgSend);
         //Debug.Log("get answer 1: " + reply);
         while (string.IsNullOrEmpty(reply)) // Esperar hasta que la respuesta no esté vacía
         {
-            yield return null;
+            await Task.Delay(10);
         }
-        //Debug.Log("get answer 2: " + reply);
-        InterpretString(reply); // Llama a traduce para traducir el mensaje a una acción.
+        // G
+        // Parseamos el mensaje y obtenemos por un lado la acción y por el otro el texto en lenguaje natural
+        getAction(reply, out actionText, out naeveText);
+
+        GPTController.Instance.AppendMessage(naeveText);
+
+        // Llama a traduce para traducir el mensaje a una acción.
+        InterpretString(actionText);
         GPTController.Instance.UpdateGPT();
         // Resetea reply para futuras solicitudes
         reply = "";
@@ -292,13 +302,13 @@ public class TraductionLogic : MonoBehaviour
         actionObjectLogic.Add("teletransportar", Teletransportar); // HECHO
         actionObjectLogic.Add("soltar", Soltar);
         actionObjectLogic.Add("levitar", Levitar); // HECHO
-        actionObjectLogic.Add("aparecer", Aparecer); // HECHO Un poco inútil, sólo serviría, por ahora, para deshacer la desaparición de un objeto, aunque no sé si Chatgpt será capaz de hacer eso.
+        actionObjectLogic.Add("materializar", Materializar); // HECHO
         actionObjectLogic.Add("utilizar", Utilizar);
-        actionObjectLogic.Add("saltar", Saltar);
+        actionObjectLogic.Add("saltar", Saltar); // HECHO
         actionObjectLogic.Add("hablar", Hablar);
-        actionObjectLogic.Add("esperar", Esperar);
+        actionObjectLogic.Add("esperar", Esperar); // HECHO
         actionObjectLogic.Add("caer", Caer);
-        actionObjectLogic.Add("invisibilizar", Invisibilizar);
+        actionObjectLogic.Add("invisibilizar", Invisibilizar); // HECHO
     }
 
     void ExecuteActionObjectLogic(string action, GameObject obj)
@@ -365,9 +375,11 @@ public class TraductionLogic : MonoBehaviour
         throw new NotImplementedException();
     }
 
-    private void Aparecer(GameObject obj)
+    private void Materializar(GameObject obj)
     {
-        obj.SetActive(true);
+        // Instancio el prefab al lado de Naeve
+        Vector3 spawnPos = player.transform.position + 5 * (Vector3.right + Vector3.up);
+        Instantiate(obj, spawnPos, Quaternion.identity);
     }
 
     private void Levitar(GameObject obj)
@@ -497,7 +509,7 @@ public class TraductionLogic : MonoBehaviour
         if (IsGrounded()) MoveTowardsTarget(obj);
     }
 
-    void Coger(GameObject obj)
+    private void Coger(GameObject obj)
     {
         Debug.Log("Lógica para coger el objeto: " + obj.name);
         if (isOnRange(obj))
@@ -613,7 +625,17 @@ public class TraductionLogic : MonoBehaviour
                 Debug.Log("Objeto: " + objeto);
 
                 GameObject objectParsed;
-                if (objectDictionary.TryGetValue(objeto, out objectParsed))
+
+                if (action == actions[14]) // Si la acción es materializar, la función es un poco diferente, por lo que lo trato como un caso aparte
+                {
+                    Debug.Log("Estamos dentro de la acción");
+                    objectParsed = GetPrefabToSpawn(objeto);
+                    if (objectParsed != null)
+                    {
+                        ExecuteActionObjectLogic(action, objectParsed);
+                    }
+                }
+                else if (objectDictionary.TryGetValue(objeto, out objectParsed))
                 {
                     ExecuteActionObjectLogic(action, objectParsed);
                 }
@@ -698,4 +720,25 @@ public class TraductionLogic : MonoBehaviour
         }
     }
 
+    private GameObject GetPrefabToSpawn(string objeto)
+    {
+        // Me aseguro de que el formato del nombre es el correcto
+        string prefabName = char.ToUpper(objeto[0]) + objeto.Substring(1).ToLower();
+        // Intento cargar el prefab desde la carpeta
+        Debug.Log("El nombre del prefab a buscar será: " + prefabName);
+        GameObject prefab = Resources.Load<GameObject>("Prefabs/" + prefabName);
+        Debug.Log("El prefab encontrado es:" + prefab.name);
+        if (prefab != null)
+        {
+            // Si se encontró el prefab, lo devuelve
+            return prefab;
+        }
+        else
+        {
+            // Si no se encontró el prefab, muestra una advertencia
+            Debug.LogWarning("Prefab no encontrado con el nombre: " + prefabName);
+            return null;
+        }
+
+    }
 }

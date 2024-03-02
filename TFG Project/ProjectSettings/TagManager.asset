@@ -21,6 +21,27 @@ TagManager:
   - aliado
   - cofre
   - porton
+  - linterna
+  - escalera
+  - escalerilla
+  - plataforma
+  - cuchillo
+  - trampa de pinchos
+  - caja
+  - hacha
+  - yunque
+  - escudo
+  - manzana
+  - hoguera
+  - mochila
+  - "espantap\xE1jaros"
+  - bola de pinchos
+  - estatua
+  - "mu\xF1eco de entrenamiento"
+  - leche
+  - pozo
+  - puerta
+  - llave
   layers:
   - Default
   - TransparentFX
